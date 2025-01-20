@@ -1,0 +1,82 @@
+import random
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
+
+class TinderPlaylist:
+    def __init__(self, songs):
+        self.songs = songs  # List of songs to swipe through
+        self.current_index = 0  # Track the current song index
+        self.liked_songs = []  # Keep track of liked songs
+
+    def like_song(self):
+        self.liked_songs.append(self.songs[self.current_index])
+        self.next_song()
+
+    def skip_song(self):
+        self.next_song()
+
+    def next_song(self):
+        self.current_index += 1
+        if self.current_index < len(self.songs):
+            self.show_song()
+        else:
+            self.show_summary()
+
+    def show_song(self):
+        song = self.songs[self.current_index]
+        print(f"\nCurrent song: {song['name']} by {', '.join(song['artists'])}")
+        action = input("Like (l) or Skip (s): ").strip().lower()
+        if action == 'l':
+            self.like_song()
+        elif action == 's':
+            self.skip_song()
+        else:
+            print("Invalid input. Please type 'l' to like or 's' to skip.")
+            self.show_song()
+
+    def show_summary(self):
+        print("\nYou've swiped through all songs!")
+        print("Liked songs:")
+        for song in self.liked_songs:
+            print(f"- {song['name']} by {', '.join(song['artists'])}")
+
+    @staticmethod
+    def fetch_songs_from_spotify_playlist(playlist_id, sp):
+        try:
+            results = sp.playlist_tracks(playlist_id)
+            songs = []
+            for item in results['items']:
+                track = item['track']
+                songs.append({
+                    'name': track['name'],
+                    'artists': [artist['name'] for artist in track['artists']]
+                })
+            return songs
+        except Exception as e:
+            print(f"Error fetching songs: {e}")
+            return []
+
+# Spotify API setup
+client_id = "d13074465e1940f5a86b7f1ededcbe58"  # Replace with your Spotify Client ID
+client_secret = "6cbd1a97f79943fa84c23972bde10d6b"  # Replace with your Spotify Client Secret
+
+sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=client_id, client_secret=client_secret))
+
+# Prompt user for Spotify playlist ID
+playlist_url = input("Enter Spotify playlist URL: ").strip()
+if "playlist/" not in playlist_url:
+    print("Invalid playlist URL format. Please enter a valid Spotify playlist URL.")
+else:
+    playlist_id = playlist_url.split("playlist/")[-1].split("?")[0]  # Extract playlist ID from URL
+
+    songs = TinderPlaylist.fetch_songs_from_spotify_playlist(playlist_id, sp)
+
+    if not songs:
+        print("No songs found in the playlist.")
+    else:
+        # Shuffle songs for randomness
+        random.shuffle(songs)
+
+        # Run the playlist tinder
+        playlist = TinderPlaylist(songs)
+        playlist.show_song()
